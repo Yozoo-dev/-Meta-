@@ -1,0 +1,90 @@
+# Figure_4C: ROBINS-I archived judgments by result
+# Run this file in RStudio with Source, or: Rscript "Figure_4C_ROBINS_I_matrix.R"
+# Optional command-line argument: output directory (default: current directory).
+# Only base R and grid are needed. This file does not read other scripts or CSVs.
+
+library(grid)
+if (.Platform$OS.type == "windows" && !l10n_info()[["UTF-8"]]) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
+argv <- if (sys.nframe() == 0L) commandArgs(trailingOnly = TRUE) else character()
+out <- if (length(argv)) argv[1L] else "."
+dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# Data used by this figure (edit selected values here).
+z <- read.csv(text = paste(c(
+  "study_id,study,assessed_outcome,time_window,domain,archived_domain,archived_overall,status",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D1,Serious,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D2,Serious,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D3,Low,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D4,Moderate,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D5,Moderate,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D6,Moderate,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D7,Serious,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D1,Serious,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D2,Moderate,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D3,Low,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D4,Moderate,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D5,No information,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D6,Moderate,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D7,Serious,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D1,Serious,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D2,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D3,Low,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D4,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D5,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D6,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D7,Serious,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D1,Serious,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D2,Moderate,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D3,Low,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D4,Serious,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D5,Low,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D6,Moderate,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D7,Moderate,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D1,Serious,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D2,Low,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D3,Low,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D4,Moderate,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D5,Low,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D6,Moderate,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D7,Moderate,Serious,Archived"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+tool <- "ROBINS-I"
+# Drawing helpers.
+ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
+study <- function(x) sub("^(WHIS[TH]) \\(.+ ([0-9]{4})\\)$","\\1 \\2",x)
+txt <- function(x,y,z,size=9,bold=FALSE,col=ink,align="left") grid.text(z,x,y,just=c(align,"centre"),gp=gpar(fontfamily="sans",fontsize=size,fontface=if(bold) 2 else 1,col=col))
+dot <- function(x,y,sz=2,col=teal,pch=16) grid.points(unit(x,"npc"),unit(y,"npc"),pch=pch,size=unit(sz,"mm"),gp=gpar(col=col,fill=col))
+note <- function(y,z,fs=8) txt(.025,y,z,fs,col=soft)
+
+# Draw this figure only.
+pdf(file.path(out, "Figure_4C_ROBINS_I_matrix.pdf"), width = 8, height = 3.8,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "ROBINS-I archived judgments by result")
+grid.newpage()
+txt(.025, .95, "ROBINS-I archived judgments by result", 12, TRUE)
+
+lev <- if(tool=="RoB 2") c("Low risk","Some concerns","High risk") else c("Low","Moderate","Serious","Critical","No information")
+ cc <- if(tool=="RoB 2") c("#6dbc81","#f2ce67","#dc7974") else c("#6dbc81","#f2ce67","#dc7974","#a44457","#d4dce4")
+ sym <- if(tool=="RoB 2") c("+","!","-") else c("+","!","-","x","?")
+ ids <- unique(z$study_id); domains<-unique(z$domain); hd<-c(domains,"Overall")
+ mat<-matrix("",length(ids),length(hd)); stat<-matrix("",length(ids),length(hd))
+ for(m in seq_along(ids)){
+  u<-z[z$study_id==ids[m],]
+  mat[m,]<-c(u$archived_domain[match(domains,u$domain)],u$archived_overall[1])
+  stat[m,]<-c(u$status[match(domains,u$domain)],"")
+ }
+ stopifnot(all(mat%in%lev))
+ xs<-seq(.57,.96,length.out=length(hd)); ys<-seq(.76,.29,length.out=length(ids))
+ for(v in seq_along(hd))txt(xs[v],.85,hd[v],8,TRUE,align="centre")
+ for(m in seq_along(ids)){
+  u<-z[z$study_id==ids[m],][1,]
+  txt(.02,ys[m],study(u$study),8.7,TRUE);txt(.205,ys[m],gsub(intToUtf8(8805),">=",paste(u$assessed_outcome,u$time_window,sep=" | "),fixed=TRUE),7.5)
+  for(v in seq_along(hd)){
+   q<-match(mat[m,v],lev)
+   dot(xs[v],ys[m],4.2,cc[q]);txt(xs[v],ys[m],paste0(sym[q],if(stat[m,v]=="Under review")"*" else ""),8,TRUE,align="centre")
+  }
+ }
+ for(q in seq_along(lev)) {xx<-.03+(q-1)*.19;dot(xx,.16,3.2,cc[q]);txt(xx+.02,.16,lev[q],8)}
+ note(.065,if(tool=="RoB 2")"* WHISH 90-day D5: archived Low risk judgment; reassessment pending." else "Only the assessed target results are shown.",8)
+invisible(dev.off())
