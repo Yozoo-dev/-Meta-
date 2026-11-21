@@ -1,0 +1,116 @@
+# Figure_2: Evidence landscape: ciNPWT versus standard dressing
+# Run this file in RStudio with Source, or: Rscript "Figure_2_Evidence_landscape.R"
+# Optional command-line argument: output directory (default: current directory).
+# Only base R and grid are needed. This file does not read other scripts or CSVs.
+
+library(grid)
+if (.Platform$OS.type == "windows" && !l10n_info()[["UTF-8"]]) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
+argv <- if (sys.nframe() == 0L) commandArgs(trailingOnly = TRUE) else character()
+out <- if (length(argv)) argv[1L] else "."
+dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# Data used by this figure (edit selected values here).
+p <- read.csv(text = paste(c(
+  "pool,outcome,design,study_count,ciNPWT_events_total,control_events_total,analysis_n,analysis_unit,rr,ci_low,ci_high,i2_fraction,tau2,cochran_q,q_p_value,risk_of_bias_scope",
+  "P01,Deep SSI through 90 days,RCT,2,77/843,92/808,1651,Participants,0.644100964745806,0.287766315765304,1.44167690955474,0.620107606137727,0.233090351103849,2.6323243039582,0.10470832958855138,WHISH 90 d: Some concerns (D5 under review); WHIST 90 d: High risk",
+  "P02,Deep SSI at 30 days,RCT,2,49/984,64/967,1951,Participants,0.571285307459221,0.199600034284158,1.63510444118535,0.709941822594243,0.430477353165366,3.44758425807815,0.0633442889025036,WHISH 30 d: not assessed separately; WHIST 30 d: Low risk",
+  "P03,Longest available deep or overall infection,RCT,4,96/1017,117/963,1980,Mixed: participants and fractures,0.709594308130979,0.446812241074432,1.12692544170473,0.433993853708826,0.0930676921074706,6.34816907078879,0.09584655403628338,Archived: one Some concerns and three High risk. WHISH D5 under review.",
+  "P04,Deep SSI at available follow-up,Observational,4,11/116,31/286,402,Participants,0.63905711419351,0.13173404372806,3.10014012812352,0.685704957749092,1.62732701293244,9.6534812016721,0.021753405969185742,Assessed infection results: Serious. Zhou deep SSI not separately rated.",
+  "P05,Any/deep SSI at longest available follow-up,Observational,5,15/132,50/335,467,Participants,0.511073097788756,0.127658963868894,2.04604285799816,0.692332239301905,1.55853692544881,15.0686833273859,0.00456086288522097,Assessed infection results: Serious. Johnson any SSI not separately rated.",
+  "P06,Wound dehiscence at available follow-up,Observational,2,5/56,18/189,245,Participants,1.05307319960277,0.181982512131432,6.09378973140401,0.676143086773861,1.08534556155737,3.08778338659396,0.07888219581104641,No separate ROBINS-I assessment documented for this result.",
+  "P07,Reoperation or major wound complication,Observational,3,10/83,32/229,312,Participants,0.784980957227297,0.197115014370989,3.12606883435955,0.541400294820746,0.827781888493968,4.3567365605686,0.11322613330363247,No separate ROBINS-I assessment documented for this result.",
+  "P08,Composite wound complication,Observational,2,3/43,31/89,132,Participants,0.242752880326579,0.0790257843832856,0.745692831355359,0.0104988698711629,0.0078797504078941,1.01061027112866,0.3147566813296182,No separate ROBINS-I assessment documented for this result."), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+s <- read.csv(text = paste(c(
+  "pool,record,study,unit,events_ciNPWT,n_ciNPWT,events_control,n_control,rr,ci_low,ci_high,log_rr,se_log_rr,reml_weight_pct,unadjusted_rd_pp,rd_low_pp,rd_high_pp,risk_of_bias",
+  "P01,WHISH-DSSI90,WHISH (Masters 2021),Participants,5,214,14,218,0.363818424566088,0.133367226107526,0.992476562023069,-1.01110036941392,0.512023943062243,34.12129879017381,-4.085569750493012,-7.917780090531829,-0.2533594104541952,Some concerns",
+  "P01,WHIST-DSSI90,WHIST (Costa 2020),Participants,72,629,78,590,0.865843218784395,0.641448606358002,1.16873662532601,-0.144051427474212,0.153051172278841,65.87870120982619,-1.7735981245452823,-5.469584486031309,1.9223882369407446,High risk",
+  "P02,WHISH-DSSI30,WHISH (Masters 2021),Participants,4,214,14,218,0.29105473965287,0.0973623357385871,0.870078360710757,-1.23424392072813,0.558720429435874,38.76154463976259,-4.552859470119181,-8.278754507379297,-0.8269644328590654,Not separately documented",
+  "P02,WHIST-DSSI30,WHIST (Costa 2020),Participants,45,770,50,749,0.875454545454545,0.592749817156487,1.29299181370256,-0.133012046988336,0.198968357883546,61.23845536023742,-0.8314115790751302,-3.268705646930481,1.605882488780221,Low risk",
+  "P03,WHISH-DSSI90,WHISH (Masters 2021),Participants,5,214,14,218,0.363818424566088,0.133367226107526,0.992476562023069,-1.01110036941392,0.512023943062243,15.678815407981455,-4.085569750493012,-7.917780090531829,-0.2533594104541952,Some concerns",
+  "P03,WHIST-DSSI90,WHIST (Costa 2020),Participants,72,629,78,590,0.865843218784395,0.641448606358002,1.16873662532601,-0.144051427474212,0.153051172278841,47.811575645004766,-1.7735981245452823,-5.469584486031309,1.9223882369407446,High risk",
+  "P03,CRI-DSSI,Crist 2017,Participants,5,33,2,33,2.5,0.521556395569991,11.9833637418435,0.916290731874155,0.799621122403566,7.604061058197476,9.090909090909092,-5.603525022252587,23.78534320407077,High risk",
+  "P03,STA-INF-ALL,Stannard 2012,Fractures,14,141,23,122,0.526672833795868,0.283714862323512,0.977686792954387,-0.641175731958803,0.315623054299113,28.905547888816308,-8.923381002209045,-17.440163010701724,-0.40659899371636027,High risk",
+  "P04,JOH-DSSI-TEXT,Johnson 2024,Participants,9,40,11,140,2.86363636363636,1.27668898990137,6.4231878617313,1.05209227303322,0.41216179453868,36.12313583217348,14.642857142857144,0.9560435843071396,28.32967070140715,Serious",
+  "P04,ZEL-DSSI,Zelle 2022,Participants,2,27,6,52,0.641975308641975,0.138832566806859,2.96855634369499,-0.443205436091011,0.781280270068853,29.01189011086942,-4.131054131054132,-17.283518195724774,9.021409933616512,Serious",
+  "P04,COO-DSSI,Cooper 2018,Participants,0,27,10,40,0.0697278911564626,0.0042569496889053,1.14212738238346,-2.66315488119432,1.42658107572664,17.725967486310008,-25.0,-38.418956077878306,-11.581043922121692,Serious",
+  "P04,ZHO-DSSI,Zhou 2016,Participants,0,22,4,54,0.265700483091787,0.0149012910407382,4.73762619106,-1.3253856080329,1.46988507821899,17.139006570647087,-7.4074074074074066,-14.392504531334199,-0.42231028348061334,Not assessed separately",
+  "P05,JOH-ALLINF,Johnson 2024,Participants,12,40,15,140,2.8,1.42868915683488,5.48754777237111,1.02961941718116,0.343303281162798,29.87959596855389,19.285714285714285,4.1885084715421685,34.3829200998864,Not assessed separately",
+  "P05,ZEL-DSSI,Zelle 2022,Participants,2,27,6,52,0.641975308641975,0.138832566806859,2.96855634369499,-0.443205436091011,0.781280270068853,23.09426483342655,-4.131054131054132,-17.283518195724774,9.021409933616512,Serious",
+  "P05,CAN-INF,Canton 2020,Participants,0,16,4,49,0.326797385620915,0.0185391432705429,5.76059689976913,-1.11841491596429,1.46403507226106,13.530753262698719,-8.16326530612245,-15.82964321203986,-0.4968874002050372,Serious",
+  "P05,COO-DSSI,Cooper 2018,Participants,0,27,10,40,0.0697278911564626,0.0042569496889053,1.14212738238346,-2.66315488119432,1.42658107572664,13.938389056406125,-25.0,-38.418956077878306,-11.581043922121692,Serious",
+  "P05,ZHO-TOTALSSI,Zhou 2016,Participants,1,22,15,54,0.163636363636364,0.0229896652866679,1.16473463924943,-1.81010860789625,1.00134589562928,19.55699687891472,-23.232323232323232,-38.01327988834189,-8.451366576304572,Serious",
+  "P06,JOH-DEH,Johnson 2024,Participants,3,40,4,140,2.625,0.612602164416001,11.2481238236709,0.965080896043587,0.742422033745279,49.023952952287296,4.642857142857143,-3.973465827668436,13.259180113382724,Not assessed separately",
+  "P06,CAN-DEH,Canton 2020,Participants,2,16,14,49,0.4375,0.111182708783369,1.72154692122981,-0.826678573184468,0.698942349670747,50.9760470477127,-16.07142857142857,-36.628516012255275,4.485658869398132,Not assessed separately",
+  "P07,JOH-RTOR,Johnson 2024,Participants,8,40,20,140,1.4,0.667427493944005,2.93664857648858,0.336472236621213,0.377964473009227,51.21318025906091,5.714285714285716,-7.969906553558601,19.398477982130032,Not assessed separately",
+  "P07,CAN-MAJOR,Canton 2020,Participants,1,16,2,49,1.53125,0.148512017953341,15.788126744306,0.4260843953109,1.1904166651785,22.143566972347816,2.168367346938776,-10.922513950986628,15.259248644864181,Not assessed separately",
+  "P07,COO-REOP,Cooper 2018,Participants,1,27,10,40,0.148148148148148,0.0201135216248744,1.09119995041458,-1.90954250488444,1.01880467360675,26.643252768591275,-21.296296296296298,-36.48878217991472,-6.103810412677871,Not assessed separately",
+  "P08,CAN-ANY,Canton 2020,Participants,2,16,17,49,0.360294117647059,0.0932055991145012,1.39274735042046,-1.02083458762543,0.689866194378634,67.76990570716728,-22.193877551020407,-43.17543729067504,-1.212317811365768,Not assessed separately",
+  "P08,COO-COMP,Cooper 2018,Participants,1,27,14,40,0.105820105820106,0.0147699472676381,0.758154013204484,-2.24601474150565,1.00468479355046,32.23009429283272,-31.296296296296294,-47.7044106160737,-14.888181976518892,Not assessed separately"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+nm <- c(P01="90-day deep SSI | RCTs",P02="30-day deep SSI | RCTs",P03="Longest available deep or overall infection | RCTs",P04="Deep SSI | observational",P05="Any or deep infection | observational",P06="Wound dehiscence | observational",P07="Reoperation or major wound complication | observational",P08="Composite wound complications | observational")
+short <- c(P01="90-day deep SSI | RCT",P02="30-day deep SSI | RCT",P03="Broad infection | RCT",P04="Deep SSI | observational",P05="Broad infection | observational",P06="Wound dehiscence",P07="Reoperation / major complication",P08="Composite wound complication")
+# Drawing helpers.
+ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
+xcol <- function(id) ifelse(id %in% c("P01","P02","P03"),teal,blue)
+fmt <- function(v) ifelse(abs(v)<.025 & v!=0,sub("0+$","",formatC(v,format="f",digits=5)),sprintf("%.2f",v))
+ci <- function(v,l,u) paste0(fmt(v)," [",fmt(l),", ",fmt(u),"]")
+pct <- function(x) sprintf("%.1f%%",100*x)
+study <- function(x) sub("^(WHIS[TH]) \\(.+ ([0-9]{4})\\)$","\\1 \\2",x)
+txt <- function(x,y,z,size=9,bold=FALSE,col=ink,align="left") grid.text(z,x,y,just=c(align,"centre"),gp=gpar(fontfamily="sans",fontsize=size,fontface=if(bold) 2 else 1,col=col))
+line <- function(x,y,x2,y2,col="#c9d0d8",lwd=.7,lty=1,arrow=NULL) grid.lines(c(x,x2),c(y,y2),gp=gpar(col=col,lwd=lwd,lty=lty),arrow=arrow)
+rect <- function(x,y,w,h,fill,border=NA) grid.rect(x,y,w,h,gp=gpar(fill=fill,col=border,lwd=.6))
+dot <- function(x,y,sz=2,col=teal,pch=16) grid.points(unit(x,"npc"),unit(y,"npc"),pch=pch,size=unit(sz,"mm"),gp=gpar(col=col,fill=col))
+note <- function(y,z,fs=8) txt(.025,y,z,fs,col=soft)
+axis <- function(l,r,b,t,limits,ticks,xlab,logscale=TRUE,null=if(logscale) 1 else 0,fs=7.5) {
+ tr <- if(logscale) log10 else identity
+ pos <- function(z) l+(tr(z)-tr(limits[1]))/diff(tr(limits))*(r-l)
+ for(v in ticks) {xx <- pos(v); line(xx,b,xx,t,"#e4e9ee"); txt(xx,b-.035,format(v,scientific=FALSE,trim=TRUE),fs,col=soft,align="centre")}
+ if(null>=limits[1] && null<=limits[2]) line(pos(null),b,pos(null),t,soft,lty=2)
+ line(l,b,r,b)
+ txt((l+r)/2,b-.067,xlab,fs,col=soft,align="centre")
+ pos
+}
+studyrows <- function(id,with_prefix=FALSE) {
+ u <- s[s$pool==id,]; v <- p[p$pool==id,]
+ data.frame(pool=id,label=c(study(u$study),"Pooled REML-Wald"),
+            rr=c(u$rr,v$rr),ci_low=c(u$ci_low,v$ci_low),ci_high=c(u$ci_high,v$ci_high),
+            weight=c(u$reml_weight_pct,0),pooled=c(rep(FALSE,nrow(u)),TRUE),
+            n1=c(paste0(u$events_ciNPWT,"/",u$n_ciNPWT),v$ciNPWT_events_total),
+            n0=c(paste0(u$events_control,"/",u$n_control),v$control_events_total))
+}
+
+# Draw this figure only.
+pdf(file.path(out, "Figure_2_Evidence_landscape.pdf"), width = 11, height = 12,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "Evidence landscape: ciNPWT versus standard dressing")
+grid.newpage()
+
+txt(.025,.966,"Evidence landscape: ciNPWT versus standard dressing",17,TRUE)
+z <- do.call(rbind,lapply(p$pool,function(id) {
+ u <- studyrows(id); blank<-u[1,]; blank[1,c("n1","n0")]<-""
+ blank$label<-if(id%in%c("P06","P07","P08")) nm[id] else short[id]; blank[,c("rr","ci_low","ci_high")]<-NA;blank$pooled<-TRUE
+ rbind(blank,u)
+}))
+# Headings are rows with no plotted estimates. Keep the log limits fixed across all blocks.
+x <- axis(.49,.75,.115,.9,c(.003,20),c(.01,.05,.1,.25,.5,1,2,4,10),"Risk ratio (log scale)",fs=8)
+txt(.025,.928,"Study / analysis",9,TRUE);txt(.315,.928,"ciNPWT",9,TRUE,align="centre")
+txt(.415,.928,"Control",9,TRUE,align="centre");txt(.775,.928,"RR [95% CI]",9,TRUE)
+yy<-seq(.897,.145,length.out=nrow(z)); eps<-diff(rev(yy))[1]
+for(m in seq_len(nrow(z))){
+ u<-z[m,];y<-yy[m];col<-xcol(u$pool)
+ if(is.na(u$rr)){
+  rect(.5,y,.95,eps*.92,pale);txt(.03,y,u$label,9,TRUE)
+  v<-p[p$pool==u$pool,]; txt(.96,y,paste0("k = ",v$study_count,"; I2 = ",pct(v$i2_fraction)),8,col=soft,align="right")
+ } else {
+  txt(.045,y,u$label,8.5,u$pooled);txt(.315,y,u$n1,8.5,u$pooled,align="centre")
+  txt(.415,y,u$n0,8.5,u$pooled,align="centre");txt(.775,y,ci(u$rr,u$ci_low,u$ci_high),8.5,u$pooled)
+  line(x(u$ci_low),y,x(u$ci_high),y,col)
+  if(u$pooled) grid.polygon(c(x(u$ci_low),x(u$rr),x(u$ci_high),x(u$rr)),c(y,y+.004,y,y-.004),gp=gpar(fill=col,col=NA))
+  else dot(x(u$rr),y,sqrt(u$weight)*.53,col,15)
+ }
+}
+note(.028,"Outcomes are shown in separate analysis blocks; no overall effect was pooled across blocks.")
+note(.014,"Counts are events / analysis units. P03 combines 1,717 participants with 263 fractures. Square area reflects within-pool weight.")
+invisible(dev.off())
