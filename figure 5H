@@ -1,0 +1,87 @@
+# Figure_5H: WHIST wound-healing signs at or before day 30
+# Run this file in RStudio with Source, or: Rscript "Figure_5H_WHIST_wound_signs.R"
+# Optional command-line argument: output directory (default: current directory).
+# Only base R and grid are needed. This file does not read other scripts or CSVs.
+
+library(grid)
+if (.Platform$OS.type == "windows" && !l10n_info()[["UTF-8"]]) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
+argv <- if (sys.nframe() == 0L) commandArgs(trailingOnly = TRUE) else character()
+out <- if (length(argv)) argv[1L] else "."
+dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# Data used by this figure (edit selected values here).
+h <- read.csv(text = paste(c(
+  "sign,events_ciNPWT,n_ciNPWT,risk_ciNPWT,events_control,n_control,risk_control,adjusted_OR,OR_CI_low,OR_CI_high,p_value",
+  "Red and inflamed,76,715,0.106293706293706,90,684,0.131578947368421,0.76,0.55,1.07,0.11",
+  "Swollen,147,715,0.205594405594406,137,684,0.200292397660819,1.03,0.79,1.36,0.81",
+  "Painful or tender,173,710,0.243661971830986,188,682,0.275659824046921,0.84,0.65,1.08,0.18",
+  "Fever >38 \u00b0C,61,713,0.0855539971949509,67,681,0.0983847283406755,0.82,0.56,1.19,0.3",
+  "Fluid leaking (not pus),50,715,0.0699300699300699,60,687,0.0873362445414847,0.76,0.51,1.14,0.18"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+# Drawing helpers.
+ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
+xcol <- function(id) ifelse(id %in% c("P01","P02","P03"),teal,blue)
+fmt <- function(v) ifelse(abs(v)<.025 & v!=0,sub("0+$","",formatC(v,format="f",digits=5)),sprintf("%.2f",v))
+ci <- function(v,l,u) paste0(fmt(v)," [",fmt(l),", ",fmt(u),"]")
+txt <- function(x,y,z,size=9,bold=FALSE,col=ink,align="left") grid.text(z,x,y,just=c(align,"centre"),gp=gpar(fontfamily="sans",fontsize=size,fontface=if(bold) 2 else 1,col=col))
+line <- function(x,y,x2,y2,col="#c9d0d8",lwd=.7,lty=1,arrow=NULL) grid.lines(c(x,x2),c(y,y2),gp=gpar(col=col,lwd=lwd,lty=lty),arrow=arrow)
+dot <- function(x,y,sz=2,col=teal,pch=16) grid.points(unit(x,"npc"),unit(y,"npc"),pch=pch,size=unit(sz,"mm"),gp=gpar(col=col,fill=col))
+note <- function(y,z,fs=8) txt(.025,y,z,fs,col=soft)
+axis <- function(l,r,b,t,limits,ticks,xlab,logscale=TRUE,null=if(logscale) 1 else 0,fs=7.5) {
+ tr <- if(logscale) log10 else identity
+ pos <- function(z) l+(tr(z)-tr(limits[1]))/diff(tr(limits))*(r-l)
+ for(v in ticks) {xx <- pos(v); line(xx,b,xx,t,"#e4e9ee"); txt(xx,b-.035,format(v,scientific=FALSE,trim=TRUE),fs,col=soft,align="centre")}
+ if(null>=limits[1] && null<=limits[2]) line(pos(null),b,pos(null),t,soft,lty=2)
+ line(l,b,r,b)
+ txt((l+r)/2,b-.067,xlab,fs,col=soft,align="centre")
+ pos
+}
+forest <- function(z,label=z$label,num=ci(z$rr,z$ci_low,z$ci_high), counts=FALSE, fs=8,
+                   lim=NULL,ticks=NULL,abs=FALSE,note1=NULL,note2=NULL, xlabel=NULL,
+                   b=.16,t=.82,header=.855,ylo=NULL,posl=NULL,posr=NULL,aux=NULL,auxname=NULL) {
+ v <- z$rr; lo <- z$ci_low; hi <- z$ci_high
+ if(is.null(lim)) lim <- if(abs) extendrange(c(lo,hi,0),f=.04) else c(min(lo)*.8,max(hi)*1.22)
+ if(is.null(ticks)) ticks <- if(abs) pretty(lim,5) else c(.0001,.001,.01,.05,.1,.25,.5,1,2,4,10,25,100,1000)
+ ticks <- ticks[ticks>=lim[1] & ticks<=lim[2]]
+ if(length(ticks)<3 && !abs) ticks <- sort(unique(c(if(lim[1]<.5 && lim[2]>2)c(.5,1,2) else pretty(lim,4))))
+ ticks <- ticks[ticks>=lim[1] & ticks<=lim[2]]
+ left <- if(is.null(posl)) if(counts) .49 else .44 else posl
+ right <- if(is.null(posr)) .75 else posr
+ x <- axis(left,right,b,t,lim,ticks,if(is.null(xlabel)) if(abs) "Difference (95% CI)" else "Risk ratio (log scale)" else xlabel,!abs,fs=fs-1)
+ txt(.025,header,if(counts)"Study / analysis" else "Analysis / outcome",fs,TRUE)
+ if(counts){txt(.315,header,"ciNPWT",fs,TRUE,align="centre");txt(.415,header,"Control",fs,TRUE,align="centre")}
+ txt(.775,header,if(abs) "Difference [95% CI]" else if(is.null(xlabel)) "RR [95% CI]" else "Estimate [95% CI]",fs,TRUE)
+ if(!is.null(aux))txt(.985,header,auxname,fs-1,TRUE,align="right")
+ n <- nrow(z)
+ yy <- if(n==1) (t+b)/2 else seq(t-.04,if(is.null(ylo))b+.045 else ylo,length.out=n)
+ for(m in seq_len(n)) {
+  rr <- z[m,]; y <- yy[m]; colour <- if("pool" %in% names(z)) xcol(rr$pool) else teal
+  strong <- "pooled" %in% names(z) && isTRUE(rr$pooled)
+  txt(.025,y,label[m],fs,strong)
+  if(counts){txt(.315,y,rr$n1,fs,strong,align="centre");txt(.415,y,rr$n0,fs,strong,align="centre")}
+  line(x(lo[m]),y,x(hi[m]),y,colour,if(strong) 1.5 else .9)
+  if(strong) {
+   dy <- if(n>20) .004 else .013
+   grid.polygon(c(x(lo[m]),x(v[m]),x(hi[m]),x(v[m])),c(y,y+dy,y,y-dy),gp=gpar(fill=colour,col=NA))
+  } else dot(x(v[m]),y,if("weight" %in% names(z)) sqrt(rr$weight)*.53 else 2,colour,15)
+  txt(.775,y,num[m],fs,strong)
+  if(!is.null(aux))txt(.985,y,aux[m],fs-1,col=soft,align="right")
+ }
+ if(!is.null(note1)) note(.045,note1,fs-1)
+ if(!is.null(note2)) note(.017,note2,fs-1)
+}
+
+# Draw this figure only.
+pdf(file.path(out, "Figure_5H_WHIST_wound_signs.pdf"), width = 8.7, height = 4.0,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "WHIST wound-healing signs at or before day 30")
+grid.newpage()
+txt(.025, .95, "WHIST wound-healing signs at or before day 30", 12, TRUE)
+
+z<-transform(h,rr=adjusted_OR,ci_low=OR_CI_low,ci_high=OR_CI_high,
+ n1=paste0(events_ciNPWT,"/",n_ciNPWT),n0=paste0(events_control,"/",n_control))
+forest(z,label=gsub(intToUtf8(176)," degrees ",h$sign,fixed=TRUE),counts=TRUE,fs=8.1,lim=c(.49,1.41),ticks=c(.5,.75,1,1.25),
+ aux=sprintf("%.2f",h$p_value),auxname="P",xlabel="Adjusted odds ratio (log scale)",
+ note1="Single trial; signs were not pooled. Denominators vary by sign.",note2="Source: Costa et al., JAMA 2020, Table 3.")
+invisible(dev.off())
