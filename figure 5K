@@ -1,5 +1,5 @@
-# Figure_5K: Continuous wound outcomes: Pauser trial
-# Run this file in RStudio with Source, or: Rscript "Figure_5K_Pauser_continuous.R"
+# Figure_5K1: Postoperative day 5: seroma volume
+# Run this file in RStudio with Source, or: Rscript "Figure_5K1_Pauser_seroma.R"
 # Optional command-line argument: output directory (default: current directory).
 # Only base R and grid are needed. This file does not read other scripts or CSVs.
 
@@ -14,8 +14,7 @@ dir.create(out, showWarnings = FALSE, recursive = TRUE)
 # Data used by this figure (edit selected values here).
 k <- read.csv(text = paste(c(
   "record,outcome,measurement,unit,n_ciNPWT,n_control,md,ci_low,ci_high,grade",
-  "PAU-SEROMA-VOL-D5,Seroma,Postoperative day 5,cm\u00b3,11,10,-3.738,-6.87464443150312,-0.601355568496877,Very low",
-  "PAU-SECRETION-DAYS,Persistent drainage,Early postoperative period,days,11,10,-3.4,-5.02943523537318,-1.77056476462682,Very low (provisional)"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+  "PAU-SEROMA-VOL-D5,Seroma,Postoperative day 5,cm\u00b3,11,10,-3.738,-6.87464443150312,-0.601355568496877,Very low"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
 
 # Drawing helpers.
 ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
@@ -71,23 +70,12 @@ forest <- function(z,label=z$label,num=ci(z$rr,z$ci_low,z$ci_high), counts=FALSE
 }
 
 # Draw this figure only.
-pdf(file.path(out, "Figure_5K_Pauser_continuous.pdf"), width = 14, height = 4.0,
-    useDingbats = FALSE, encoding = "WinAnsi", title = "Continuous wound outcomes: Pauser trial")
+pdf(file.path(out, "Figure_5K1_Pauser_seroma.pdf"), width = 7.3, height = 3.7,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "Postoperative day 5: seroma volume")
 grid.newpage()
-txt(.025, .95, "Continuous wound outcomes: Pauser trial", 12, TRUE)
+txt(.025, .95, "Postoperative day 5: seroma volume", 12, TRUE)
 
-pushViewport(viewport(layout=grid.layout(1,2)))
-pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 1))
-txt(.03,.83,"Postoperative day 5: seroma volume",9,TRUE)
 z<-transform(k[1,],rr=md)
 forest(z,label="Pauser 2016",abs=TRUE,fs=8.2,lim=c(-8,0),ticks=seq(-8,0,2),t=.66,header=.72,
  xlabel="Mean difference (cubic cm)",note1="ciNPWT n = 11; control n = 10. GRADE: very low.")
-popViewport()
-pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 2))
-txt(.03,.83,"Early postoperative period: secretion duration",9,TRUE)
-z<-transform(k[2,],rr=md)
-forest(z,label="Pauser 2016",abs=TRUE,fs=8.2,lim=c(-6,0),ticks=seq(-6,0,2),t=.66,header=.72,
- xlabel="Mean difference (days)",note1="ciNPWT n = 11; control n = 10. GRADE: very low (provisional).")
-popViewport()
-popViewport()
 invisible(dev.off())
