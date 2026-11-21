@@ -1,0 +1,46 @@
+# Figure_5C: Descriptive funnel plot: 90-day deep SSI
+# Run this file in RStudio with Source, or: Rscript "Figure_5C_Descriptive_funnel.R"
+# Optional command-line argument: output directory (default: current directory).
+# Only base R and grid are needed. This file does not read other scripts or CSVs.
+
+library(grid)
+if (.Platform$OS.type == "windows" && !l10n_info()[["UTF-8"]]) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
+argv <- if (sys.nframe() == 0L) commandArgs(trailingOnly = TRUE) else character()
+out <- if (length(argv)) argv[1L] else "."
+dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# Data used by this figure (edit selected values here).
+s <- read.csv(text = paste(c(
+  "pool,record,study,unit,events_ciNPWT,n_ciNPWT,events_control,n_control,rr,ci_low,ci_high,log_rr,se_log_rr,reml_weight_pct,unadjusted_rd_pp,rd_low_pp,rd_high_pp,risk_of_bias",
+  "P01,WHISH-DSSI90,WHISH (Masters 2021),Participants,5,214,14,218,0.363818424566088,0.133367226107526,0.992476562023069,-1.01110036941392,0.512023943062243,34.12129879017381,-4.085569750493012,-7.917780090531829,-0.2533594104541952,Some concerns",
+  "P01,WHIST-DSSI90,WHIST (Costa 2020),Participants,72,629,78,590,0.865843218784395,0.641448606358002,1.16873662532601,-0.144051427474212,0.153051172278841,65.87870120982619,-1.7735981245452823,-5.469584486031309,1.9223882369407446,High risk"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+p <- read.csv(text = paste(c(
+  "pool,outcome,design,study_count,ciNPWT_events_total,control_events_total,analysis_n,analysis_unit,rr,ci_low,ci_high,i2_fraction,tau2,cochran_q,q_p_value,risk_of_bias_scope",
+  "P01,Deep SSI through 90 days,RCT,2,77/843,92/808,1651,Participants,0.644100964745806,0.287766315765304,1.44167690955474,0.620107606137727,0.233090351103849,2.6323243039582,0.10470832958855138,WHISH 90 d: Some concerns (D5 under review); WHIST 90 d: High risk"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+# Drawing helpers.
+ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
+study <- function(x) sub("^(WHIS[TH]) \\(.+ ([0-9]{4})\\)$","\\1 \\2",x)
+txt <- function(x,y,z,size=9,bold=FALSE,col=ink,align="left") grid.text(z,x,y,just=c(align,"centre"),gp=gpar(fontfamily="sans",fontsize=size,fontface=if(bold) 2 else 1,col=col))
+line <- function(x,y,x2,y2,col="#c9d0d8",lwd=.7,lty=1,arrow=NULL) grid.lines(c(x,x2),c(y,y2),gp=gpar(col=col,lwd=lwd,lty=lty),arrow=arrow)
+dot <- function(x,y,sz=2,col=teal,pch=16) grid.points(unit(x,"npc"),unit(y,"npc"),pch=pch,size=unit(sz,"mm"),gp=gpar(col=col,fill=col))
+note <- function(y,z,fs=8) txt(.025,y,z,fs,col=soft)
+
+# Draw this figure only.
+pdf(file.path(out, "Figure_5C_Descriptive_funnel.pdf"), width = 7.6, height = 4.1,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "Descriptive funnel plot: 90-day deep SSI")
+grid.newpage()
+txt(.025, .95, "Descriptive funnel plot: 90-day deep SSI", 12, TRUE)
+
+z<-s[s$pool=="P01",]; xp<-function(q).19+(q+1.3)/1.8*.69; yp<-function(q) .79-q/.60*.54
+line(.19,.25,.88,.25);line(.19,.25,.19,.79)
+for(v in seq(-1.25,.5,.25))txt(xp(v),.21,format(v,trim=TRUE,scientific=FALSE),7.4,col=soft,align="centre")
+for(v in seq(0,.6,.1))txt(.155,yp(v),sprintf("%.1f",v),7.4,col=soft,align="right")
+line(xp(log(p$rr[1])),.25,xp(log(p$rr[1])),.79,soft,lty=2)
+for(m in 1:nrow(z)){dot(xp(z$log_rr[m]),yp(z$se_log_rr[m]),2.4,teal);txt(xp(z$log_rr[m])+.015,yp(z$se_log_rr[m]),study(z$study[m]),8)}
+txt(.535,.15,"Log risk ratio",8,align="centre");txt(.025,.86,"Standard error",8)
+note(.062,"Two trials; no funnel asymmetry test or inference on publication bias.")
+invisible(dev.off())
