@@ -1,0 +1,89 @@
+# Figure_4D: ROBINS-I distribution by domain
+# Run this file in RStudio with Source, or: Rscript "Figure_4D_ROBINS_I_domain_summary.R"
+# Optional command-line argument: output directory (default: current directory).
+# Only base R and grid are needed. This file does not read other scripts or CSVs.
+
+library(grid)
+if (.Platform$OS.type == "windows" && !l10n_info()[["UTF-8"]]) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
+argv <- if (sys.nframe() == 0L) commandArgs(trailingOnly = TRUE) else character()
+out <- if (length(argv)) argv[1L] else "."
+dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# Data used by this figure (edit selected values here).
+z <- read.csv(text = paste(c(
+  "study_id,study,assessed_outcome,time_window,domain,archived_domain,archived_overall,status",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D1,Serious,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D2,Serious,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D3,Low,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D4,Moderate,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D5,Moderate,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D6,Moderate,Serious,Archived",
+  "JOHNSON_2024,Johnson 2024,Deep SSI,\u226590 days,D7,Serious,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D1,Serious,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D2,Moderate,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D3,Low,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D4,Moderate,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D5,No information,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D6,Moderate,Serious,Archived",
+  "ZELLE_2022,Zelle 2022,Deep SSI,Follow-up not reported,D7,Serious,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D1,Serious,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D2,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D3,Low,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D4,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D5,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D6,Moderate,Serious,Archived",
+  "CANTON_2020,Canton 2020,SSI,Follow-up not reported,D7,Serious,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D1,Serious,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D2,Moderate,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D3,Low,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D4,Serious,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D5,Low,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D6,Moderate,Serious,Archived",
+  "COOPER_2018,Cooper 2018,Deep SSI,90 days,D7,Moderate,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D1,Serious,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D2,Low,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D3,Low,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D4,Moderate,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D5,Low,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D6,Moderate,Serious,Archived",
+  "ZHOU_2016,Zhou 2016,Any SSI,Follow-up not reported,D7,Moderate,Serious,Archived"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+tool <- "ROBINS-I"
+# Drawing helpers.
+ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
+txt <- function(x,y,z,size=9,bold=FALSE,col=ink,align="left") grid.text(z,x,y,just=c(align,"centre"),gp=gpar(fontfamily="sans",fontsize=size,fontface=if(bold) 2 else 1,col=col))
+rect <- function(x,y,w,h,fill,border=NA) grid.rect(x,y,w,h,gp=gpar(fill=fill,col=border,lwd=.6))
+note <- function(y,z,fs=8) txt(.025,y,z,fs,col=soft)
+
+# Draw this figure only.
+pdf(file.path(out, "Figure_4D_ROBINS_I_domain_summary.pdf"), width = 6.6, height = 3.8,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "ROBINS-I distribution by domain")
+grid.newpage()
+txt(.025, .95, "ROBINS-I distribution by domain", 12, TRUE)
+
+lev <- if(tool=="RoB 2") c("Low risk","Some concerns","High risk") else c("Low","Moderate","Serious","Critical","No information")
+ cc <- if(tool=="RoB 2") c("#6dbc81","#f2ce67","#dc7974") else c("#6dbc81","#f2ce67","#dc7974","#a44457","#d4dce4")
+ sym <- if(tool=="RoB 2") c("+","!","-") else c("+","!","-","x","?")
+ ids <- unique(z$study_id); domains<-unique(z$domain); hd<-c(domains,"Overall")
+ mat<-matrix("",length(ids),length(hd)); stat<-matrix("",length(ids),length(hd))
+ for(m in seq_along(ids)){
+  u<-z[z$study_id==ids[m],]
+  mat[m,]<-c(u$archived_domain[match(domains,u$domain)],u$archived_overall[1])
+  stat[m,]<-c(u$status[match(domains,u$domain)],"")
+ }
+ stopifnot(all(mat%in%lev))
+ y<-seq(.8,.28,length.out=length(hd)); lx<-.17; rx<-.96
+ for(m in seq_along(hd)){
+  txt(.03,y[m],hd[m],8)
+  n<-as.numeric(table(factor(mat[,m],levels=lev))); starts<-c(0,cumsum(n))/sum(n)
+  for(q in which(n>0)){
+   width<-(starts[q+1]-starts[q])*(rx-lx)
+   xx<-lx+(rx-lx)*(starts[q]+starts[q+1])/2
+   rect(xx,y[m],width,.043,cc[q],"white");txt(xx,y[m],n[q],7.5,align="centre")
+  }
+ }
+ for(q in 0:4)txt(lx+(rx-lx)*q/4,.21,paste0(25*q,"%"),7.5,col=soft,align="centre")
+ note(.11,if(tool=="RoB 2")"Bars count assessed trial results, including the archived WHISH D5 judgment." else "Bars count assessed observational results.",8)
+invisible(dev.off())
