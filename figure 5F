@@ -1,0 +1,68 @@
+# Figure_5F: L'Abbe plots: broad infection
+# Run this file in RStudio with Source, or: Rscript "Figure_5F_Labbe_broad_infection.R"
+# Optional command-line argument: output directory (default: current directory).
+# Only base R and grid are needed. This file does not read other scripts or CSVs.
+
+library(grid)
+if (.Platform$OS.type == "windows" && !l10n_info()[["UTF-8"]]) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
+argv <- if (sys.nframe() == 0L) commandArgs(trailingOnly = TRUE) else character()
+out <- if (length(argv)) argv[1L] else "."
+dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# Data used by this figure (edit selected values here).
+p <- read.csv(text = paste(c(
+  "pool,outcome,design,study_count,ciNPWT_events_total,control_events_total,analysis_n,analysis_unit,rr,ci_low,ci_high,i2_fraction,tau2,cochran_q,q_p_value,risk_of_bias_scope",
+  "P03,Longest available deep or overall infection,RCT,4,96/1017,117/963,1980,Mixed: participants and fractures,0.709594308130979,0.446812241074432,1.12692544170473,0.433993853708826,0.0930676921074706,6.34816907078879,0.09584655403628338,Archived: one Some concerns and three High risk. WHISH D5 under review.",
+  "P05,Any/deep SSI at longest available follow-up,Observational,5,15/132,50/335,467,Participants,0.511073097788756,0.127658963868894,2.04604285799816,0.692332239301905,1.55853692544881,15.0686833273859,0.00456086288522097,Assessed infection results: Serious. Johnson any SSI not separately rated."), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+s <- read.csv(text = paste(c(
+  "pool,record,study,unit,events_ciNPWT,n_ciNPWT,events_control,n_control,rr,ci_low,ci_high,log_rr,se_log_rr,reml_weight_pct,unadjusted_rd_pp,rd_low_pp,rd_high_pp,risk_of_bias",
+  "P03,WHISH-DSSI90,WHISH (Masters 2021),Participants,5,214,14,218,0.363818424566088,0.133367226107526,0.992476562023069,-1.01110036941392,0.512023943062243,15.678815407981455,-4.085569750493012,-7.917780090531829,-0.2533594104541952,Some concerns",
+  "P03,WHIST-DSSI90,WHIST (Costa 2020),Participants,72,629,78,590,0.865843218784395,0.641448606358002,1.16873662532601,-0.144051427474212,0.153051172278841,47.811575645004766,-1.7735981245452823,-5.469584486031309,1.9223882369407446,High risk",
+  "P03,CRI-DSSI,Crist 2017,Participants,5,33,2,33,2.5,0.521556395569991,11.9833637418435,0.916290731874155,0.799621122403566,7.604061058197476,9.090909090909092,-5.603525022252587,23.78534320407077,High risk",
+  "P03,STA-INF-ALL,Stannard 2012,Fractures,14,141,23,122,0.526672833795868,0.283714862323512,0.977686792954387,-0.641175731958803,0.315623054299113,28.905547888816308,-8.923381002209045,-17.440163010701724,-0.40659899371636027,High risk",
+  "P05,JOH-ALLINF,Johnson 2024,Participants,12,40,15,140,2.8,1.42868915683488,5.48754777237111,1.02961941718116,0.343303281162798,29.87959596855389,19.285714285714285,4.1885084715421685,34.3829200998864,Not assessed separately",
+  "P05,ZEL-DSSI,Zelle 2022,Participants,2,27,6,52,0.641975308641975,0.138832566806859,2.96855634369499,-0.443205436091011,0.781280270068853,23.09426483342655,-4.131054131054132,-17.283518195724774,9.021409933616512,Serious",
+  "P05,CAN-INF,Canton 2020,Participants,0,16,4,49,0.326797385620915,0.0185391432705429,5.76059689976913,-1.11841491596429,1.46403507226106,13.530753262698719,-8.16326530612245,-15.82964321203986,-0.4968874002050372,Serious",
+  "P05,COO-DSSI,Cooper 2018,Participants,0,27,10,40,0.0697278911564626,0.0042569496889053,1.14212738238346,-2.66315488119432,1.42658107572664,13.938389056406125,-25.0,-38.418956077878306,-11.581043922121692,Serious",
+  "P05,ZHO-TOTALSSI,Zhou 2016,Participants,1,22,15,54,0.163636363636364,0.0229896652866679,1.16473463924943,-1.81010860789625,1.00134589562928,19.55699687891472,-23.232323232323232,-38.01327988834189,-8.451366576304572,Serious"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+# Drawing helpers.
+ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
+xcol <- function(id) ifelse(id %in% c("P01","P02","P03"),teal,blue)
+study <- function(x) sub("^(WHIS[TH]) \\(.+ ([0-9]{4})\\)$","\\1 \\2",x)
+txt <- function(x,y,z,size=9,bold=FALSE,col=ink,align="left") grid.text(z,x,y,just=c(align,"centre"),gp=gpar(fontfamily="sans",fontsize=size,fontface=if(bold) 2 else 1,col=col))
+line <- function(x,y,x2,y2,col="#c9d0d8",lwd=.7,lty=1,arrow=NULL) grid.lines(c(x,x2),c(y,y2),gp=gpar(col=col,lwd=lwd,lty=lty),arrow=arrow)
+dot <- function(x,y,sz=2,col=teal,pch=16) grid.points(unit(x,"npc"),unit(y,"npc"),pch=pch,size=unit(sz,"mm"),gp=gpar(col=col,fill=col))
+note <- function(y,z,fs=8) txt(.025,y,z,fs,col=soft)
+
+# Draw this figure only.
+pdf(file.path(out, "Figure_5F_Labbe_broad_infection.pdf"), width = 8.5, height = 4.2,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "L'Abbe plots: broad infection")
+grid.newpage()
+txt(.025, .95, "L'Abbe plots: broad infection", 12, TRUE)
+
+for(q in 1:2){
+ id<-c("P03","P05")[q];z<-s[s$pool==id,]; v<-p[p$pool==id,]
+ l<-.1+(q-1)*.49; rr<-.44+(q-1)*.49; b<-.22;t<-.80
+ xp<-function(x)l+(rr-l)*x/.32;yp<-function(x)b+(t-b)*x/.32
+ line(l,b,l,t);line(l,b,rr,b);line(l,b,xp(.32),yp(.32),soft,lty=2)
+ line(l,b,xp(.32),yp(.32*v$rr),xcol(id),lty=3)
+ for(f in seq(0,.3,.1)){txt(xp(f),b-.045,paste0(f*100,"%"),7.4,align="centre");txt(l-.012,yp(f),paste0(f*100,"%"),7.4,align="right")}
+  for(m in seq_len(nrow(z))){
+  xx <- xp(z$events_control[m]/z$n_control[m]); yy <- yp(z$events_ciNPWT[m]/z$n_ciNPWT[m])
+  dot(xx,yy,sqrt(z$n_ciNPWT[m]+z$n_control[m])*.15,xcol(id),1)
+  lbl <- strsplit(study(z$study[m])," ",fixed=TRUE)[[1]][1]
+  side <- if(z$events_control[m]/z$n_control[m]>.20) "right" else "left"
+  dx <- if(side=="right") -.012 else .012
+  dy <- if(lbl=="Stannard") -.018 else if(lbl=="Zhou") .018 else .007
+  txt(xx+dx,yy+dy,lbl,6.9,col=soft,align=side)
+ }
+ txt((l+rr)/2,.85,c("Randomized","Observational")[q],8.5,TRUE,align="centre")
+}
+txt(.025,.88,"ciNPWT risk",7.5,col=soft);txt(.51,.11,"Control risk",8,align="centre")
+note(.055,"Circle area is proportional to analysis units; dotted lines show pooled RR.")
+note(.023,"Broad RCT analysis: 1,717 participants and 263 fractures. No between-design comparison.")
+invisible(dev.off())
