@@ -1,0 +1,102 @@
+# Figure_3D: Deep SSI | observational
+# Run this file in RStudio with Source, or: Rscript "Figure_3D_Observational_deep_SSI.R"
+# Optional command-line argument: output directory (default: current directory).
+# Only base R and grid are needed. This file does not read other scripts or CSVs.
+
+library(grid)
+if (.Platform$OS.type == "windows" && !l10n_info()[["UTF-8"]]) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
+argv <- if (sys.nframe() == 0L) commandArgs(trailingOnly = TRUE) else character()
+out <- if (length(argv)) argv[1L] else "."
+dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# Data used by this figure (edit selected values here).
+p <- read.csv(text = paste(c(
+  "pool,outcome,design,study_count,ciNPWT_events_total,control_events_total,analysis_n,analysis_unit,rr,ci_low,ci_high,i2_fraction,tau2,cochran_q,q_p_value,risk_of_bias_scope",
+  "P04,Deep SSI at available follow-up,Observational,4,11/116,31/286,402,Participants,0.63905711419351,0.13173404372806,3.10014012812352,0.685704957749092,1.62732701293244,9.6534812016721,0.021753405969185742,Assessed infection results: Serious. Zhou deep SSI not separately rated."), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+s <- read.csv(text = paste(c(
+  "pool,record,study,unit,events_ciNPWT,n_ciNPWT,events_control,n_control,rr,ci_low,ci_high,log_rr,se_log_rr,reml_weight_pct,unadjusted_rd_pp,rd_low_pp,rd_high_pp,risk_of_bias",
+  "P04,JOH-DSSI-TEXT,Johnson 2024,Participants,9,40,11,140,2.86363636363636,1.27668898990137,6.4231878617313,1.05209227303322,0.41216179453868,36.12313583217348,14.642857142857144,0.9560435843071396,28.32967070140715,Serious",
+  "P04,ZEL-DSSI,Zelle 2022,Participants,2,27,6,52,0.641975308641975,0.138832566806859,2.96855634369499,-0.443205436091011,0.781280270068853,29.01189011086942,-4.131054131054132,-17.283518195724774,9.021409933616512,Serious",
+  "P04,COO-DSSI,Cooper 2018,Participants,0,27,10,40,0.0697278911564626,0.0042569496889053,1.14212738238346,-2.66315488119432,1.42658107572664,17.725967486310008,-25.0,-38.418956077878306,-11.581043922121692,Serious",
+  "P04,ZHO-DSSI,Zhou 2016,Participants,0,22,4,54,0.265700483091787,0.0149012910407382,4.73762619106,-1.3253856080329,1.46988507821899,17.139006570647087,-7.4074074074074066,-14.392504531334199,-0.42231028348061334,Not assessed separately"), collapse = "\n"), encoding = "UTF-8", stringsAsFactors = FALSE)
+
+# Drawing helpers.
+ink <- "#202c3a"; soft <- "#536373"; pale <- "#edf2f6"; teal <- "#087f82"; blue <- "#416fa4"
+xcol <- function(id) ifelse(id %in% c("P01","P02","P03"),teal,blue)
+fmt <- function(v) ifelse(abs(v)<.025 & v!=0,sub("0+$","",formatC(v,format="f",digits=5)),sprintf("%.2f",v))
+ci <- function(v,l,u) paste0(fmt(v)," [",fmt(l),", ",fmt(u),"]")
+pct <- function(x) sprintf("%.1f%%",100*x)
+study <- function(x) sub("^(WHIS[TH]) \\(.+ ([0-9]{4})\\)$","\\1 \\2",x)
+txt <- function(x,y,z,size=9,bold=FALSE,col=ink,align="left") grid.text(z,x,y,just=c(align,"centre"),gp=gpar(fontfamily="sans",fontsize=size,fontface=if(bold) 2 else 1,col=col))
+line <- function(x,y,x2,y2,col="#c9d0d8",lwd=.7,lty=1,arrow=NULL) grid.lines(c(x,x2),c(y,y2),gp=gpar(col=col,lwd=lwd,lty=lty),arrow=arrow)
+dot <- function(x,y,sz=2,col=teal,pch=16) grid.points(unit(x,"npc"),unit(y,"npc"),pch=pch,size=unit(sz,"mm"),gp=gpar(col=col,fill=col))
+note <- function(y,z,fs=8) txt(.025,y,z,fs,col=soft)
+axis <- function(l,r,b,t,limits,ticks,xlab,logscale=TRUE,null=if(logscale) 1 else 0,fs=7.5) {
+ tr <- if(logscale) log10 else identity
+ pos <- function(z) l+(tr(z)-tr(limits[1]))/diff(tr(limits))*(r-l)
+ for(v in ticks) {xx <- pos(v); line(xx,b,xx,t,"#e4e9ee"); txt(xx,b-.035,format(v,scientific=FALSE,trim=TRUE),fs,col=soft,align="centre")}
+ if(null>=limits[1] && null<=limits[2]) line(pos(null),b,pos(null),t,soft,lty=2)
+ line(l,b,r,b)
+ txt((l+r)/2,b-.067,xlab,fs,col=soft,align="centre")
+ pos
+}
+forest <- function(z,label=z$label,num=ci(z$rr,z$ci_low,z$ci_high), counts=FALSE, fs=8,
+                   lim=NULL,ticks=NULL,abs=FALSE,note1=NULL,note2=NULL, xlabel=NULL,
+                   b=.16,t=.82,header=.855,ylo=NULL,posl=NULL,posr=NULL,aux=NULL,auxname=NULL) {
+ v <- z$rr; lo <- z$ci_low; hi <- z$ci_high
+ if(is.null(lim)) lim <- if(abs) extendrange(c(lo,hi,0),f=.04) else c(min(lo)*.8,max(hi)*1.22)
+ if(is.null(ticks)) ticks <- if(abs) pretty(lim,5) else c(.0001,.001,.01,.05,.1,.25,.5,1,2,4,10,25,100,1000)
+ ticks <- ticks[ticks>=lim[1] & ticks<=lim[2]]
+ if(length(ticks)<3 && !abs) ticks <- sort(unique(c(if(lim[1]<.5 && lim[2]>2)c(.5,1,2) else pretty(lim,4))))
+ ticks <- ticks[ticks>=lim[1] & ticks<=lim[2]]
+ left <- if(is.null(posl)) if(counts) .49 else .44 else posl
+ right <- if(is.null(posr)) .75 else posr
+ x <- axis(left,right,b,t,lim,ticks,if(is.null(xlabel)) if(abs) "Difference (95% CI)" else "Risk ratio (log scale)" else xlabel,!abs,fs=fs-1)
+ txt(.025,header,if(counts)"Study / analysis" else "Analysis / outcome",fs,TRUE)
+ if(counts){txt(.315,header,"ciNPWT",fs,TRUE,align="centre");txt(.415,header,"Control",fs,TRUE,align="centre")}
+ txt(.775,header,if(abs) "Difference [95% CI]" else if(is.null(xlabel)) "RR [95% CI]" else "Estimate [95% CI]",fs,TRUE)
+ if(!is.null(aux))txt(.985,header,auxname,fs-1,TRUE,align="right")
+ n <- nrow(z)
+ yy <- if(n==1) (t+b)/2 else seq(t-.04,if(is.null(ylo))b+.045 else ylo,length.out=n)
+ for(m in seq_len(n)) {
+  rr <- z[m,]; y <- yy[m]; colour <- if("pool" %in% names(z)) xcol(rr$pool) else teal
+  strong <- "pooled" %in% names(z) && isTRUE(rr$pooled)
+  txt(.025,y,label[m],fs,strong)
+  if(counts){txt(.315,y,rr$n1,fs,strong,align="centre");txt(.415,y,rr$n0,fs,strong,align="centre")}
+  line(x(lo[m]),y,x(hi[m]),y,colour,if(strong) 1.5 else .9)
+  if(strong) {
+   dy <- if(n>20) .004 else .013
+   grid.polygon(c(x(lo[m]),x(v[m]),x(hi[m]),x(v[m])),c(y,y+dy,y,y-dy),gp=gpar(fill=colour,col=NA))
+  } else dot(x(v[m]),y,if("weight" %in% names(z)) sqrt(rr$weight)*.53 else 2,colour,15)
+  txt(.775,y,num[m],fs,strong)
+  if(!is.null(aux))txt(.985,y,aux[m],fs-1,col=soft,align="right")
+ }
+ if(!is.null(note1)) note(.045,note1,fs-1)
+ if(!is.null(note2)) note(.017,note2,fs-1)
+}
+studyrows <- function(id,with_prefix=FALSE) {
+ u <- s[s$pool==id,]; v <- p[p$pool==id,]
+ data.frame(pool=id,label=c(study(u$study),"Pooled REML-Wald"),
+            rr=c(u$rr,v$rr),ci_low=c(u$ci_low,v$ci_low),ci_high=c(u$ci_high,v$ci_high),
+            weight=c(u$reml_weight_pct,0),pooled=c(rep(FALSE,nrow(u)),TRUE),
+            n1=c(paste0(u$events_ciNPWT,"/",u$n_ciNPWT),v$ciNPWT_events_total),
+            n0=c(paste0(u$events_control,"/",u$n_control),v$control_events_total))
+}
+
+# Draw this figure only.
+pdf(file.path(out, "Figure_3D_Observational_deep_SSI.pdf"), width = 8, height = 3.75,
+    useDingbats = FALSE, encoding = "WinAnsi", title = "Deep SSI | observational")
+grid.newpage()
+txt(.025, .95, "Deep SSI | observational", 12, TRUE)
+
+id <- "P04"
+z <- studyrows(id)
+pr <- p[1, ]
+warning <- "Exploratory; some infection results were not rated separately."
+forest(z,counts=TRUE,fs=8.2,lim=c(.003,20),ticks=c(.01,.1,.5,1,2,10),
+  note1=paste0("REML-Wald; I2 = ",pct(pr$i2_fraction),"; tau-squared = ",sprintf("%.4f",pr$tau2),"; Q P = ",sprintf("%.4f",pr$q_p_value),"."),
+  note2=warning)
+invisible(dev.off())
